@@ -1,0 +1,6 @@
+*pyc
+*pth
+*csv
+*png
+.DS_Store
+datasets

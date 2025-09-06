@@ -36,7 +36,7 @@ def parse_args():
                         help='evaluate on the test set one time')
     parser.add_argument("--gpu", type=str, default='0',
                         help='gpu card ID')
-    parser.add_argument('--seed', type=int, default=2411,
+    parser.add_argument('--seed', type=int, default=4594, #2411, 5193, 4594
                         help='seed to run')
     args = parser.parse_args()
     return args
@@ -75,17 +75,26 @@ def read_data(args):
                             batch_size=batch_size,
                             shuffle=shuffle,
                             sampler=sampler,
-                            num_workers=4)
+                            num_workers=4,
+                            pin_memory=True,
+                            persistent_workers=True,
+                            prefetch_factor=2)
 
         valid_loader = DataLoader(dataset=valid_dataset,
                             batch_size=batch_size,
                             shuffle=False,
-                            num_workers=4)
+                            num_workers=4,
+                            pin_memory=True,
+                            persistent_workers=True,
+                            prefetch_factor=2)
 
         test_loader = DataLoader(dataset=test_dataset,
                             batch_size=batch_size,
                             shuffle=False,
-                            num_workers=4)
+                            num_workers=4,
+                            pin_memory=True,
+                            persistent_workers=True,
+                            prefetch_factor=2)
         
         return train_loader, valid_loader, test_loader
 
@@ -155,6 +164,8 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     start_time = time.time()
     best_val = 0
     best_worst, best_avg = 999, 999
+
+    final_epoch = 0
     
     for epoch in range(NUM_EPOCHS):
         
@@ -208,6 +219,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 overall_acc = val_acc
             if best_val < overall_acc:
                 print('Model saved at epoch', epoch)
+                final_epoch = epoch
                 best_val = overall_acc
                 if args.type == 'margin':
                     save_state_dict(model.state_dict(), os.path.join('./', config.margin_path))
@@ -228,15 +240,14 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     print("Test Worst:", best_worst)
     print("Test Avg:", best_avg)
 
+    print("final updated epoch:", final_epoch)
+
     return best_val
 
 
 def eval(model, data_loader, path):
     
     model.load_state_dict(torch.load(os.path.join('./', path), map_location=DEVICE)) 
-
-    print(f"Type of loaded state dict keys: {type(model)}")
-    print(f"First few keys: {list(model.keys())[:5]}")
     model.eval()
 
     with torch.no_grad():
@@ -258,12 +269,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.deterministic = True
     
-    # Check if CUDA is available, otherwise use CPU
-    if torch.cuda.is_available():
-        DEVICE = f'cuda:{str(args.gpu)}'
-    else:
-        DEVICE = 'cpu'
-        print("CUDA not available, using CPU instead")
+    DEVICE = torch.device(f'cuda:{args.gpu}' if torch.cuda.is_available() else 'cpu')
     
     if args.dataset == 'celeba' or args.dataset == 'waterbirds':
         celeba = True
@@ -280,7 +286,7 @@ if __name__ == '__main__':
             lr = config.base_lr
             weight_decay = config.weight_decay
             if config.opt_b == 'sgd':
-                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)#, momentum=0.9)
             else:
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
             epochs = config.base_epochs
@@ -292,7 +298,7 @@ if __name__ == '__main__':
             lr = config.base_lr
             weight_decay = config.weight_decay
             if config.opt_m == 'sgd':
-                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay) #, momentum=0.9)
+                optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)#, momentum=0.9)
             else:
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
             train(model, config.base_epochs, optimizer, DEVICE, train_loader, valid_loader, test_loader, args)
@@ -316,16 +322,9 @@ if __name__ == '__main__':
         valid_loader = read_data(args)
         
         if args.type == 'baseline':
-            model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
+            model = Network(config.model_name, config.num_class, config.mlp_neurons)
         else:
-            model = NetworkMargin(
-                model_name=config.model_name,
-                num_classes=config.num_class,
-                DEVICE=DEVICE,
-                std=config.std,
-                mlp_neurons=config.mlp_neurons,
-                hid_dim=config.hid_dim
-            )
+            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.mlp_neurons)
         
         model = model.to(DEVICE)
         
@@ -338,16 +337,9 @@ if __name__ == '__main__':
         test_loader = read_data(args)
 
         if args.type == 'baseline':
-            model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
+            model = Network(config.model_name, config.num_class, config.mlp_neurons)
         else:
-            model = NetworkMargin(
-                model_name=config.model_name,
-                num_classes=config.num_class,
-                DEVICE=DEVICE,
-                std=config.std,
-                mlp_neurons=config.mlp_neurons,
-                hid_dim=config.hid_dim
-            )
+            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.mlp_neurons)
         
         model = model.to(DEVICE)
         

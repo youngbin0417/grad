@@ -37,7 +37,8 @@ class NetworkMargin(nn.Module):
     def __init__(self, model_name, num_classes, DEVICE, std, mlp_neurons=None, hid_dim=None, easy_margin=None):
         super(NetworkMargin, self).__init__()
         self.num_classes = num_classes
-
+        print(f"Debug: hid_dim type = {type(hid_dim)}, value = {hid_dim}")
+        print(f"Debug: mlp_neurons type = {type(mlp_neurons)}, value = {mlp_neurons}")
         self.new_feats = nn.Sequential(
                         nn.Linear(hid_dim, mlp_neurons),
                         nn.ReLU(),

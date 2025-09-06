@@ -234,6 +234,9 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
 def eval(model, data_loader, path):
     
     model.load_state_dict(torch.load(os.path.join('./', path), map_location=DEVICE)) 
+
+    print(f"Type of loaded state dict keys: {type(model)}")
+    print(f"First few keys: {list(model.keys())[:5]}")
     model.eval()
 
     with torch.no_grad():
@@ -255,7 +258,12 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.deterministic = True
     
-    DEVICE = f'cuda:{str(args.gpu)}'
+    # Check if CUDA is available, otherwise use CPU
+    if torch.cuda.is_available():
+        DEVICE = f'cuda:{str(args.gpu)}'
+    else:
+        DEVICE = 'cpu'
+        print("CUDA not available, using CPU instead")
     
     if args.dataset == 'celeba' or args.dataset == 'waterbirds':
         celeba = True
@@ -308,9 +316,16 @@ if __name__ == '__main__':
         valid_loader = read_data(args)
         
         if args.type == 'baseline':
-            model = Network(config.model_name, config.num_class, config.mlp_neurons)
+            model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
         else:
-            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.mlp_neurons)
+            model = NetworkMargin(
+                model_name=config.model_name,
+                num_classes=config.num_class,
+                DEVICE=DEVICE,
+                std=config.std,
+                mlp_neurons=config.mlp_neurons,
+                hid_dim=config.hid_dim
+            )
         
         model = model.to(DEVICE)
         
@@ -323,9 +338,16 @@ if __name__ == '__main__':
         test_loader = read_data(args)
 
         if args.type == 'baseline':
-            model = Network(config.model_name, config.num_class, config.mlp_neurons)
+            model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
         else:
-            model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.mlp_neurons)
+            model = NetworkMargin(
+                model_name=config.model_name,
+                num_classes=config.num_class,
+                DEVICE=DEVICE,
+                std=config.std,
+                mlp_neurons=config.mlp_neurons,
+                hid_dim=config.hid_dim
+            )
         
         model = model.to(DEVICE)
         

@@ -3,7 +3,7 @@ num_class = 1
 mlp_neurons = 128
 
 # ----------------------Baseline Hyperparams-------------------------- #
-base_epochs = 50
+base_epochs = 15
 base_batch_size = 512
 base_lr = 0.0001
 weight_decay = 0.1 # Vary this to train a bias-amplified model'
@@ -28,13 +28,13 @@ imagenet_mean = [0.485, 0.456, 0.406]  # mean of the ImageNet dataset for normal
 imagenet_std = [0.229, 0.224, 0.225]
 
 # -----------------------CelebA/Waterbirds-parameters--------- #
-dataset_path = './datasets'
-img_dir = './datasets/celeba/img_align_celeba'
-partition_path = './datasets/celeba/list_eval_partition.txt'
-attr_path = './datasets/celeba/list_attr_celeba.txt'
+dataset_path = './dataset'
+img_dir = './dataset/celeba/img_align_celeba'
+partition_path = './dataset/celeba/list_eval_partition.txt'
+attr_path = './dataset/celeba/list_attr_celeba.txt'
 target_attribute = 'Blond_Hair'
 bias_attribute = 'Male'
-celeba_path = './datasets/celeba_features'
-celeba_val_path = './datasets/celeba_features'
-waterbirds_path = './datasets/waterbirds_features'
-waterbirds_val_path = './datasets/waterbirds_features'
+celeba_path = './dataset/celeba_features'
+celeba_val_path = './dataset/celeba_features'
+waterbirds_path = './dataset/waterbirds_features'
+waterbirds_val_path = './dataset/waterbirds_features'

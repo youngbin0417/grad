@@ -3,4 +3,5 @@
 *csv
 *png
 .DS_Store
-datasets
+dataset/
+logs/

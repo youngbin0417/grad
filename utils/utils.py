@@ -25,6 +25,23 @@ def save_state_dict(state_dict, save_path):
     # Saves model
     torch.save(state_dict, save_path)
 
+def save_checkpoint(save_path, model, optimizer, epoch, best_val_acc):
+    # Saves checkpoint for resuming training
+    state = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'best_val_acc': best_val_acc,
+    }
+    torch.save(state, save_path)
+
+def load_checkpoint(load_path, model, optimizer):
+    # Loads checkpoint for resuming training
+    state = torch.load(load_path)
+    model.load_state_dict(state['model_state_dict'])
+    optimizer.load_state_dict(state['optimizer_state_dict'])
+    return state['epoch'], state['best_val_acc']
+
 
 def compute_accuracy(model, data_loader, device):
     # Evaluation for worst and average group accuracies

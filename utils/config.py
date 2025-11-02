@@ -45,7 +45,12 @@ target_attribute = 'y'         # Bird type: 0 = landbird, 1 = waterbird
 bias_attribute = 'place'      # Background: 0 = land, 1 = water
 
 
-celeba_path = './datasets/celeba_features'
-celeba_val_path = './datasets/celeba_features'
-waterbirds_path = './datasets/waterbirds_features'
-waterbirds_val_path = './datasets/waterbirds_features'
+celeba_path = './dataset/celeba_features'
+celeba_val_path = './dataset/celeba_features'
+waterbirds_path = './dataset/waterbirds_features'
+waterbirds_val_path = './dataset/waterbirds_features'
+
+# -----------------------Stability options--------- #
+use_ema = True
+ema_decay = 0.999
+grad_clip = 1.0

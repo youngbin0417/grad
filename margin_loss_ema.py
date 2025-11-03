@@ -158,7 +158,15 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     if args.type == 'margin':
         baseline = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
 
-        model_name = config.basemodel_path_for_margin
+        model_name = config.baseline_path_ema
+
+        # Check if the baseline model exists before loading
+        if not os.path.exists(model_name):
+            print(f"Error: Baseline model not found at '{model_name}'.")
+            print("Please train the baseline model first by running:")
+            print(f"python margin_loss_ema.py --dataset {args.dataset} --train --type baseline")
+            return
+
         with torch.no_grad():
             baseline.load_state_dict(torch.load(os.path.join('./', model_name), map_location=DEVICE))
 

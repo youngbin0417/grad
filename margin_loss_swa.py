@@ -162,7 +162,15 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
         baseline = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
 
         ''' Comment lines 108-110 only if the bias-amplified model is not required.'''
-        model_name = config.basemodel_path_for_margin
+        model_name = config.baseline_path_swa
+
+        # Check if the baseline model exists before loading
+        if not os.path.exists(model_name):
+            print(f"Error: Baseline model not found at '{model_name}'.")
+            print("Please train the baseline model first by running:")
+            print(f"python margin_loss_swa.py --dataset {args.dataset} --train --type baseline --swa")
+            return
+
         with torch.no_grad():
             baseline.load_state_dict(torch.load(os.path.join('./', model_name), map_location=DEVICE))
 

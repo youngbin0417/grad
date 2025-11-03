@@ -33,9 +33,6 @@ margin_path_ema = './ema/rgin_ema.pth'
 baseline_path_swa = './swa/baseline_swa.pth'
 margin_path_swa = './swa/margin_swa.pth'
 
-# Path for the pre-trained baseline model used by CAML
-# This should typically point to the standard ERM baseline
-basemodel_path_for_margin = 'baseline_erm.pth'
 
 
 # ----------------------Model-details-------------------------- #

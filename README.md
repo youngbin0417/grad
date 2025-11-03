@@ -18,18 +18,34 @@ All model paths are now configured in `utils/config.py` to avoid overwriting fil
 
 ### Training
 
-There are three training scripts available:
-- `margin_loss.py`: For standard training (ERM).
-- `margin_loss_ema.py`: To apply Exponential Moving Average (EMA) during training.
-- `margin_loss_swa.py`: To apply Stochastic Weight Averaging (SWA) during training.
+Training a CAML model is a two-step process. First, a baseline model must be trained using the *same technique* (ERM, EMA, or SWA) as the CAML model you intend to train. Then, the CAML model is trained using the outputs of this corresponding baseline model.
 
-For each script, use `--type baseline` for the baseline model or `--type margin` for the CAML model.
+**Step 1: Train the Baseline Model**
 
-**Example Commands:**
+Train the baseline model using the desired technique. The resulting model file (e.g., `baseline_erm.pth`, `baseline_ema.pth`, `baseline_swa.pth`) is required for the next step.
 
 *   **Train a standard baseline (ERM):**
     ```bash
     python margin_loss.py --dataset waterbirds --train --type baseline
+    ```
+
+*   **Train a baseline with EMA:**
+    ```bash
+    python margin_loss_ema.py --dataset waterbirds --train --type baseline
+    ```
+
+*   **Train a baseline with SWA:**
+    ```bash
+    python margin_loss_swa.py --dataset waterbirds --train --type baseline --swa
+    ```
+
+**Step 2: Train the CAML Model**
+
+Once the corresponding baseline model is trained, you can train the CAML model using the same technique.
+
+*   **Train a standard CAML model (ERM):**
+    ```bash
+    python margin_loss.py --dataset waterbirds --train --type margin
     ```
 
 *   **Train a CAML model with EMA:**
@@ -37,9 +53,9 @@ For each script, use `--type baseline` for the baseline model or `--type margin`
     python margin_loss_ema.py --dataset waterbirds --train --type margin
     ```
 
-*   **Train a baseline model with SWA:**
+*   **Train a CAML model with SWA:**
     ```bash
-    python margin_loss_swa.py --dataset waterbirds --train --type baseline --swa
+    python margin_loss_swa.py --dataset waterbirds --train --type margin --swa
     ```
 
 ### Prediction

@@ -8,3 +8,5 @@ logs/
 ema/
 erm/
 swa/
+setup_celeba.py
+setup_waterbirds.py

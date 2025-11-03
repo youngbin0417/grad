@@ -58,41 +58,79 @@ def predict_comparison(args):
     """
     DEVICE = torch.device(f'cuda:{args.gpu}' if torch.cuda.is_available() else 'cpu')
 
-    # 1. Get paths for both models
-    model_paths = get_model_paths(args.technique)
+        # 1. Get paths for the models to compare
 
-    # 2. Load the test dataset
+        # The baseline is always the standard ERM model for a consistent benchmark.
+
+    baseline_model_path = config.baseline_path_erm
+
+    caml_model_path = get_model_paths(args.technique)['margin'] # Get margin model for the specified technique
+
+    
+
+        # 2. Load the test dataset
+
     if args.dataset == 'waterbirds':
+
         test_dataset = WaterBirds(split='test')
+
     else: # celeba
+
         test_dataset = CelebaDataset(split=2)
 
-    test_loader = DataLoader(dataset=test_dataset,
-                            batch_size=config.base_batch_size,
-                            shuffle=False,
-                            num_workers=4,
-                            pin_memory=True)
     
+
+    test_loader = DataLoader(dataset=test_dataset,
+
+                                batch_size=config.base_batch_size,
+
+                                shuffle=False,
+
+                                num_workers=4,
+
+                                pin_memory=True)
+
+        
+
     print(f"\nRunning comparison for technique '{args.technique.upper()}' on dataset '{args.dataset}'...")
 
-    # 3. Evaluate Baseline Model
-    print("\n--- Evaluating Baseline Model ---")
+    
+
+        # 3. Evaluate Baseline Model (ERM)
+
+    print("\n--- Evaluating Baseline Model (ERM) ---")
+
     baseline_model = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim).to(DEVICE)
-    base_results = run_evaluation(baseline_model, model_paths['baseline'], test_loader, DEVICE)
 
-    # 4. Evaluate Margin Model
-    print("\n--- Evaluating CAML (Margin) Model ---")
+    base_results = run_evaluation(baseline_model, baseline_model_path, test_loader, DEVICE)
+
+    
+
+        # 4. Evaluate Margin Model (CAML + Technique)
+
+    print(f"\n--- Evaluating CAML Model ({args.technique.upper()}) ---")
+
     margin_model = NetworkMargin(config.model_name, config.num_class, DEVICE, config.std, config.mlp_neurons, config.hid_dim).to(DEVICE)
-    margin_results = run_evaluation(margin_model, model_paths['margin'], test_loader, DEVICE)
 
-    # 5. Print comparison table
-    print("\n" + "="*60)
+    margin_results = run_evaluation(margin_model, caml_model_path, test_loader, DEVICE)
+
+    
+
+        # 5. Print comparison table
+
+    print("\n" + "="*65)
+
     print("                 Prediction Results Comparison")
-    print("="*60)
-    print(f"Technique: {args.technique.upper()} | Dataset: {args.dataset}")
-    print("-" * 60)
-    print(f"{ 'Metric':<28} | {'Baseline Model':<15} | {'CAML Model':<15}")
-    print("-" * 60)
+
+    print("="*65)
+
+    print(f"Technique: CAML + {args.technique.upper()} | Dataset: {args.dataset}")
+
+    print("-" * 65)
+
+    print(f"{'Metric':<28} | {'ERM Baseline':<17} | {'CAML Model':<17}")
+
+    print("-" * 65)
 
     metric_names = ['Global Accuracy (%)', 'Worst-Group Accuracy (%)', 'Average-Group Accuracy (%)']
     

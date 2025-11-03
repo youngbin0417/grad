@@ -7,9 +7,9 @@ base_epochs = 100
 base_batch_size = 64
 base_lr = 0.01
 weight_decay = 0.01 # Vary this to train a bias-amplified model'
-scale = 8
+scale = 4
 std = 0.2
-K = 6
+K = 4
 
 opt_b = 'adam'
 opt_m = 'adam'
@@ -32,6 +32,10 @@ margin_path_ema = './ema/rgin_ema.pth'
 # SWA training
 baseline_path_swa = './swa/baseline_swa.pth'
 margin_path_swa = './swa/margin_swa.pth'
+
+# Path for the pre-trained baseline model used by all CAML variants
+# This MUST point to the standard ERM baseline for correct margin calculation
+basemodel_path_for_margin = './erm/baseline_erm.pth'
 
 
 

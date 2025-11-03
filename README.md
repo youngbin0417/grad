@@ -18,30 +18,20 @@ All model paths are now configured in `utils/config.py` to avoid overwriting fil
 
 ### Training
 
-Training a CAML model is a two-step process. First, a baseline model must be trained using the *same technique* (ERM, EMA, or SWA) as the CAML model you intend to train. Then, the CAML model is trained using the outputs of this corresponding baseline model.
+Training a CAML model is a two-step process. First, a standard ERM baseline model must be trained. This baseline model is then used by all CAML variants (ERM, EMA, SWA) to calculate margins.
 
-**Step 1: Train the Baseline Model**
+**Step 1: Train the Standard ERM Baseline Model**
 
-Train the baseline model using the desired technique. The resulting model file (e.g., `baseline_erm.pth`, `baseline_ema.pth`, `baseline_swa.pth`) is required for the next step.
+This model is trained using standard Empirical Risk Minimization. The resulting model file (`baseline_erm.pth`) is required for the next step, regardless of whether you intend to train a CAML model with ERM, EMA, or SWA.
 
-*   **Train a standard baseline (ERM):**
-    ```bash
-    python margin_loss.py --dataset waterbirds --train --type baseline
-    ```
+```bash
+# Train a standard baseline model
+python margin_loss.py --dataset waterbirds --train --type baseline
+```
 
-*   **Train a baseline with EMA:**
-    ```bash
-    python margin_loss_ema.py --dataset waterbirds --train --type baseline
-    ```
+**Step 2: Train the CAML Model (with ERM, EMA, or SWA)**
 
-*   **Train a baseline with SWA:**
-    ```bash
-    python margin_loss_swa.py --dataset waterbirds --train --type baseline --swa
-    ```
-
-**Step 2: Train the CAML Model**
-
-Once the corresponding baseline model is trained, you can train the CAML model using the same technique.
+Once the standard ERM baseline model is trained, you can train the CAML model using your desired technique. The CAML model will internally use the `baseline_erm.pth` for margin calculation.
 
 *   **Train a standard CAML model (ERM):**
     ```bash

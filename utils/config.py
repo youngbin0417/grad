@@ -22,16 +22,16 @@ hid_dim = 512
 # technique: 'erm' (standard), 'ema', or 'swa'
 
 # Standard ERM training
-baseline_path_erm = 'baseline_erm.pth'
-margin_path_erm = 'margin_erm.pth'
+baseline_path_erm = './erm/baseline_erm.pth'
+margin_path_erm = './erm/margin_erm.pth'
 
 # EMA training
-baseline_path_ema = 'baseline_ema.pth'
-margin_path_ema = 'margin_ema.pth'
+baseline_path_ema = './ema/baseline_ema.pth'
+margin_path_ema = './ema/rgin_ema.pth'
 
 # SWA training
-baseline_path_swa = 'baseline_swa.pth'
-margin_path_swa = 'margin_swa.pth'
+baseline_path_swa = './swa/baseline_swa.pth'
+margin_path_swa = './swa/margin_swa.pth'
 
 # Path for the pre-trained baseline model used by CAML
 # This should typically point to the standard ERM baseline

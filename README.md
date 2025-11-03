@@ -60,18 +60,23 @@ Once the corresponding baseline model is trained, you can train the CAML model u
 
 ### Prediction
 
-Use `predict.py` to evaluate a trained model on the test set. You must specify the model type and the training technique.
+Use `predict.py` to evaluate and compare the performance of the `baseline` and `CAML` models for a specific training technique. The script will automatically find the corresponding model files and display their results in a comparison table.
 
 **Example Commands:**
 
-*   **Evaluate the standard CAML (ERM) model:**
+*   **Compare models trained with standard ERM:**
     ```bash
-    python predict.py --dataset waterbirds --type margin --technique erm
+    python predict.py --dataset waterbirds --technique erm
     ```
 
-*   **Evaluate the baseline model trained with EMA:**
+*   **Compare models trained with EMA:**
     ```bash
-    python predict.py --dataset waterbirds --type baseline --technique ema
+    python predict.py --dataset waterbirds --technique ema
+    ```
+
+*   **Compare models trained with SWA:**
+    ```bash
+    python predict.py --dataset waterbirds --technique swa
     ```
 
 </br>

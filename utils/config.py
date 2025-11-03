@@ -19,6 +19,7 @@ hid_dim = 512
 basemodel_path = 'basemodel.pth' #'{}_{}_base_balanced.pth'.format(bias_attribute, target_attribute)
 margin_path = 'margin.pth' #'{}_{}_adv_balanced.pth'.format(bias_attribute, target_attribute)
 
+
 # ----------------------Model-details-------------------------- #
 model_name = 'resnet18'
 

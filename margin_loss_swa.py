@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from utils.clustering import get_margins, obtain_and_evaluate_clusters
 from utils.dataset import CelebaDataset, WaterBirds
 from utils.utils import compute_accuracy, save_state_dict, save_checkpoint, load_checkpoint
-# from utils.ema import EMA
+from utils.swa import SWA
 
 from models.basemodel import Network, NetworkMargin
 
@@ -41,6 +41,8 @@ def parse_args():
                         help='seed to run')
     parser.add_argument('--resume', action='store_true',
                         help='resume training from checkpoint')
+    parser.add_argument('--swa', action='store_true',
+                        help='use stochastic weight averaging')
     args = parser.parse_args()
     return args
 
@@ -152,8 +154,9 @@ def cross_entropy_loss_arc(logits, labels, **kwargs):
 
 def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test_loader, args, start_epoch=0, best_val_acc=0):
     # training loop
-    # ema = EMA(model, decay=0.999)
-    # ema.register()
+    if args.swa:
+        swa_model = SWA(model)
+        swa_start_epoch = int(NUM_EPOCHS * 0.75)
 
     if args.type == 'margin':
         baseline = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
@@ -202,7 +205,6 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 cost.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
                 optimizer.step()
-                # ema.update()
 
             elif args.type == 'baseline':
                 logits, _, _ = model(features)
@@ -211,11 +213,16 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 optimizer.zero_grad()
                 cost.backward()
                 optimizer.step()
-                # ema.update()
         
+        if args.swa and epoch >= swa_start_epoch:
+            if epoch == swa_start_epoch:
+                print("SWA starting at epoch", epoch)
+                swa_model.register()
+            else:
+                swa_model.update()
+
         # Evaluate the run
         model.eval()
-        # ema.apply_shadow()
         
         with torch.set_grad_enabled(False): # save memory during inference
             
@@ -233,7 +240,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 if args.type == 'margin':
                     save_state_dict(model.state_dict(), os.path.join('./', config.margin_path))
                 elif args.type == 'baseline':
-                    save_state_dict(model.state_dict(), os.path.join('./', 'origin_basemodel.pth'))
+                    save_state_dict(model.state_dict(), os.path.join('./', 'swa_basemodel.pth'))
             
                 best_worst = test_worst
                 best_avg = test_avg
@@ -242,10 +249,22 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
             print('Val worst, avg, global acc', val_worst, val_avg, val_acc)
             print('Test worst, avg, global acc', test_worst, test_avg, test_acc)
         
-        # ema.restore()
         save_checkpoint('checkpoint.pth', model, optimizer, epoch, best_val)
                 
-        
+    if args.swa:
+        print("Applying SWA weights")
+        swa_model.apply_shadow()
+        model.eval()
+
+        with torch.set_grad_enabled(False):
+            print("Evaluating SWA model")
+            train_acc, train_worst, train_avg = compute_accuracy(model, train_loader, device=DEVICE)
+            val_acc, val_worst, val_avg = compute_accuracy(model, valid_loader, device=DEVICE)
+            test_acc, test_worst, test_avg = compute_accuracy(model, test_loader, device=DEVICE)
+            print('SWA Train worst, avg, global acc', train_worst, train_avg, train_acc)
+            print('SWA Val worst, avg, global acc', val_worst, val_avg, val_acc)
+            print('SWA Test worst, avg, global acc', test_worst, test_avg, test_acc)
+
     print('Total Training Time: %.2f min' % ((time.time() - start_time)/60))
     
     print("Final val acc", best_val)

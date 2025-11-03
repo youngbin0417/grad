@@ -158,8 +158,7 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
     if args.type == 'margin':
         baseline = Network(config.model_name, config.num_class, config.mlp_neurons, config.hid_dim)
 
-        ''' Comment lines 108-110 only if the bias-amplified model is not required.'''
-        model_name = config.basemodel_path
+        model_name = config.basemodel_path_for_margin
         with torch.no_grad():
             baseline.load_state_dict(torch.load(os.path.join('./', model_name), map_location=DEVICE))
 
@@ -231,9 +230,9 @@ def train(model, NUM_EPOCHS, optimizer, DEVICE, train_loader, valid_loader, test
                 final_epoch = epoch
                 best_val = overall_acc
                 if args.type == 'margin':
-                    save_state_dict(model.state_dict(), os.path.join('./', config.margin_path))
+                    save_state_dict(model.state_dict(), os.path.join('./', config.margin_path_ema))
                 elif args.type == 'baseline':
-                    save_state_dict(model.state_dict(), os.path.join('./', 'ema_basemodel.pth'))
+                    save_state_dict(model.state_dict(), os.path.join('./', config.baseline_path_ema))
             
                 best_worst = test_worst
                 best_avg = test_avg
@@ -348,9 +347,9 @@ if __name__ == '__main__':
         model = model.to(DEVICE)
         
         if args.type == 'baseline':
-            eval(model, valid_loader, config.basemodel_path)
+            eval(model, valid_loader, config.baseline_path_ema)
         else:
-            eval(model, valid_loader, config.margin_path)
+            eval(model, valid_loader, config.margin_path_ema)
 
     elif args.test_only:
         test_loader = read_data(args)
@@ -363,8 +362,8 @@ if __name__ == '__main__':
         model = model.to(DEVICE)
         
         if args.type == 'baseline':
-            eval(model, test_loader, config.basemodel_path)
+            eval(model, test_loader, config.baseline_path_ema)
         else:
-            eval(model, test_loader, config.margin_path)
+            eval(model, test_loader, config.margin_path_ema)
     
     print("VRAM taken: ", torch.cuda.max_memory_allocated() / 1024**2)

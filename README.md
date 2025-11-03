@@ -12,16 +12,50 @@
 
 ## 
 
-### Baseline
-To run the baseline (ERM model), run the following command. Dataset can either be waterbirds or celeba:
+## Usage
 
-```bash
-python margin_loss.py --dataset waterbirds --train --type baseline --bias 
-```
+All model paths are now configured in `utils/config.py` to avoid overwriting files.
 
-### Margin loss (CAML) training
-```bash
-python margin_loss.py --dataset waterbirds --train --type margin
-```
+### Training
+
+There are three training scripts available:
+- `margin_loss.py`: For standard training (ERM).
+- `margin_loss_ema.py`: To apply Exponential Moving Average (EMA) during training.
+- `margin_loss_swa.py`: To apply Stochastic Weight Averaging (SWA) during training.
+
+For each script, use `--type baseline` for the baseline model or `--type margin` for the CAML model.
+
+**Example Commands:**
+
+*   **Train a standard baseline (ERM):**
+    ```bash
+    python margin_loss.py --dataset waterbirds --train --type baseline
+    ```
+
+*   **Train a CAML model with EMA:**
+    ```bash
+    python margin_loss_ema.py --dataset waterbirds --train --type margin
+    ```
+
+*   **Train a baseline model with SWA:**
+    ```bash
+    python margin_loss_swa.py --dataset waterbirds --train --type baseline --swa
+    ```
+
+### Prediction
+
+Use `predict.py` to evaluate a trained model on the test set. You must specify the model type and the training technique.
+
+**Example Commands:**
+
+*   **Evaluate the standard CAML (ERM) model:**
+    ```bash
+    python predict.py --dataset waterbirds --type margin --technique erm
+    ```
+
+*   **Evaluate the baseline model trained with EMA:**
+    ```bash
+    python predict.py --dataset waterbirds --type baseline --technique ema
+    ```
 
 </br>

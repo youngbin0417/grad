@@ -16,8 +16,26 @@ opt_m = 'adam'
 
 hid_dim = 512
 # ----------------------Paths-------------------------- #
-basemodel_path = 'basemodel.pth' #'{}_{}_base_balanced.pth'.format(bias_attribute, target_attribute)
-margin_path = 'margin.pth' #'{}_{}_adv_balanced.pth'.format(bias_attribute, target_attribute)
+# Paths for model checkpoints.
+# The naming convention is: {model_type}_{technique}.pth
+# model_type: 'baseline' or 'margin'
+# technique: 'erm' (standard), 'ema', or 'swa'
+
+# Standard ERM training
+baseline_path_erm = 'baseline_erm.pth'
+margin_path_erm = 'margin_erm.pth'
+
+# EMA training
+baseline_path_ema = 'baseline_ema.pth'
+margin_path_ema = 'margin_ema.pth'
+
+# SWA training
+baseline_path_swa = 'baseline_swa.pth'
+margin_path_swa = 'margin_swa.pth'
+
+# Path for the pre-trained baseline model used by CAML
+# This should typically point to the standard ERM baseline
+basemodel_path_for_margin = 'baseline_erm.pth'
 
 
 # ----------------------Model-details-------------------------- #

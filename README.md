@@ -1,72 +1,110 @@
-# Mitigating Biases in Blackbox Feature Extractors for Image Classification Tasks
+# Bias-Balanced Margin (BBM) Learning
 
-본 리포지토리는 졸업 프로젝트를 위한 수정 된 파일들의 리포지토리입니다
-	
-</br>
+This repository contains the implementation of Bias-Balanced Margin Learning with advanced ensemble and model averaging techniques. The project combines enhanced ensemble methods with Exponential Moving Average (EMA) and Stochastic Weight Averaging (SWA) for improved model performance and stability.
 
-## Dataset
+## Features
 
-* Download the CelebA, and Waterbirds datasets. Extract their features from a pretrained feature extractor and store them. Note the folder path and update it in `utils/config.py`. Recall that the validation set has to be group-balanced. For CelebA, store the folder in the `celeba_path` attribute of `utils/config.py` (similarly for Waterbirds). The embeddings should be stored in `{split}_feats.npy`, whereas the bias and target labels should be stored in `{split}_bias.npy` and `{split}_target.npy` respectively, inside the folder. 
+- **Traditional Training**: Standard baseline and margin loss training
+- **EMA Training**: Exponential Moving Average for model stability
+- **SWA Training**: Stochastic Weight Averaging for improved generalization
+- **Enhanced Ensemble Methods**: 
+  - Top-K model selection based on validation metrics
+  - Epoch-wise model saving for ensemble creation
+  - Validation score tracking for ensemble optimization
+- **Continual Learning**: Ability to resume training from saved checkpoints
+- **Comprehensive Evaluation**: Individual model evaluation and ensemble evaluation
 
-</br>
+## Files
 
-## 
+- `margin_loss.py`: Standard baseline and margin loss training
+- `margin_loss_ema.py`: Training with Exponential Moving Average
+- `margin_loss_swa.py`: Training with Stochastic Weight Averaging
+- `margin_loss_ema_grad.py`: EMA training with grad_proj ensemble features
+- `margin_loss_swa_grad.py`: SWA training with grad_proj ensemble features
+- `margin_loss_continue.py`: Continual training from saved models
+- `balance_validation_sets.py`: Tools for dataset balancing
+- `predict.py`: Prediction utilities
+- `requirements.txt`: Required Python packages
 
 ## Usage
 
-All model paths are now configured in `utils/config.py` to avoid overwriting files.
-
-### Training
-
-Training a CAML model is a two-step process. First, a standard ERM baseline model must be trained. This baseline model is then used by all CAML variants (ERM, EMA, SWA) to calculate margins.
-
-**Step 1: Train the Standard ERM Baseline Model**
-
-This model is trained using standard Empirical Risk Minimization. The resulting model file (`baseline_erm.pth`) is required for the next step, regardless of whether you intend to train a CAML model with ERM, EMA, or SWA.
-
+### Standard Training
 ```bash
-# Train a standard baseline model
-python margin_loss.py --dataset waterbirds --train --type baseline
+python margin_loss.py --type baseline --dataset celeba --train
+python margin_loss.py --type margin --dataset celeba --train
 ```
 
-**Step 2: Train the CAML Model (with ERM, EMA, or SWA)**
+### EMA Training
+```bash
+python margin_loss_ema.py --type baseline --dataset celeba --train
+python margin_loss_ema.py --type margin --dataset celeba --train
+```
 
-Once the standard ERM baseline model is trained, you can train the CAML model using your desired technique. The CAML model will internally use the `baseline_erm.pth` for margin calculation.
+### SWA Training
+```bash
+python margin_loss_swa.py --type baseline --dataset celeba --train --swa
+python margin_loss_swa.py --type margin --dataset celeba --train --swa
+```
 
-*   **Train a standard CAML model (ERM):**
-    ```bash
-    python margin_loss.py --dataset waterbirds --train --type margin
-    ```
+### Training with Ensemble Features
+```bash
+python margin_loss_ema_grad.py --type baseline --dataset celeba --train
+python margin_loss_swa_grad.py --type margin --dataset celeba --train --swa
+```
 
-*   **Train a CAML model with EMA:**
-    ```bash
-    python margin_loss_ema.py --dataset waterbirds --train --type margin
-    ```
+### Testing with Ensemble
+```bash
+python margin_loss_ema_grad.py --type baseline --dataset celeba --test-only
+python margin_loss_swa_grad.py --type margin --dataset celeba --test-only
+```
 
-*   **Train a CAML model with SWA:**
-    ```bash
-    python margin_loss_swa.py --dataset waterbirds --train --type margin --swa
-    ```
+### Continual Training
+```bash
+python margin_loss_continue.py --type baseline --dataset celeba --train
+```
 
-### Prediction
+### Evaluation Options
+- `--train`: Perform training
+- `--val-only`: Evaluate on validation set once
+- `--test-only`: Evaluate on test set once
+- `--clustering`: Run clustering analysis only
+- `--bias`: Use bias-amplified training
+- `--resume`: Resume training from checkpoint
+- `--swa`: Use Stochastic Weight Averaging
 
-Use `predict.py` to evaluate and compare the performance of the `baseline` and `CAML` models for a specific training technique. The script will automatically find the corresponding model files and display their results in a comparison table.
+### Datasets
+- `celeba`: CelebA dataset
+- `waterbirds`: Waterbirds dataset
 
-**Example Commands:**
+## Ensemble Methodology
 
-*   **Compare models trained with standard ERM:**
-    ```bash
-    python predict.py --dataset waterbirds --technique erm
-    ```
+The enhanced ensemble approach combines the advantages of:
+1. **EMA/SWA**: Improving model stability and generalization through weight averaging
+2. **Top-K Selection**: Selecting the best models based on validation performance
+3. **Epoch-based Saving**: Creating diverse models across training epochs
 
-*   **Compare models trained with EMA:**
-    ```bash
-    python predict.py --dataset waterbirds --technique ema
-    ```
+This combination allows for both improved performance and robustness in model predictions.
 
-*   **Compare models trained with SWA:**
-    ```bash
-    python predict.py --dataset waterbirds --technique swa
-    ```
+## Configuration
 
-</br>
+Most configuration parameters are defined in the `utils.config` module. Key parameters include:
+- Learning rates (`base_lr`)
+- Batch sizes (`base_batch_size`)
+- Number of epochs (`base_epochs`)
+- Model architecture parameters
+- Paths for saving/loading models
+
+## Results
+
+The ensemble methods with EMA/SWA typically achieve:
+- Improved stability across different random seeds
+- Better generalization on bias-sensitive datasets
+- Higher overall accuracy on both balanced and imbalanced data
+
+## Dependencies
+
+See `requirements.txt` for the complete list of dependencies.
+
+## Citation
+
+If you use this code in your research, please cite the relevant papers.

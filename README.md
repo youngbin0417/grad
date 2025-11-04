@@ -24,6 +24,7 @@ This repository contains the implementation of Bias-Balanced Margin Learning wit
 - `margin_loss_continue.py`: Continual training from saved models
 - `balance_validation_sets.py`: Tools for dataset balancing
 - `predict.py`: Prediction utilities
+- `predict_grad.py`: Enhanced prediction with model comparison
 - `requirements.txt`: Required Python packages
 
 ## Usage
@@ -61,6 +62,12 @@ python margin_loss_swa_grad.py --type margin --dataset celeba --test-only
 ### Continual Training
 ```bash
 python margin_loss_continue.py --type baseline --dataset celeba --train
+```
+
+### Model Comparison
+```bash
+python predict_grad.py --dataset celeba --gpu 0
+python predict_grad.py --dataset waterbirds --gpu 0
 ```
 
 ### Evaluation Options

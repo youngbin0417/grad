@@ -37,22 +37,24 @@ def evaluate_model(model, data_loader, device, model_type='baseline', margin_mod
     all_group_ids = []
     
     with torch.no_grad():
-        for _, (group_id, features, targets, z1, _) in enumerate(data_loader):
+        for _, (_, features, targets, bias, _) in enumerate(data_loader):
             features = features.to(device)
-            targets = targets.to(device)
+            targets_device = targets.to(device)
             
             if model_type == 'baseline':
                 logits, _, _ = model(features)
-            elif model_type == 'margin':
-                logits, _, _, _, _ = model(features, margin_model, s=config.scale)
-            elif model_type == 'ensemble':
-                # For ensemble models, may need special handling
-                logits, _, _, _, _ = model(features, margin_model, s=config.scale)
+            else:  # margin or ensemble, which are handled similarly in eval
+                # In eval mode, NetworkMargin returns 3 values (cosine, probas, features)
+                # The first value (cosine) serves as the logits.
+                logits, _, _ = model(features, m=None, s=config.scale)
             
             preds = torch.argmax(logits, dim=1)
             all_preds.extend(preds.cpu().numpy())
             all_targets.extend(targets.cpu().numpy())
-            all_group_ids.extend(group_id.numpy())
+            
+            # Correctly calculate group_id
+            group_ids = targets.numpy() * 2 + bias.numpy()
+            all_group_ids.extend(group_ids)
     
     all_preds = np.array(all_preds)
     all_targets = np.array(all_targets)
@@ -81,9 +83,9 @@ def evaluate_ensemble(models, data_loader, device, model_type='baseline'):
     all_group_ids = []
     
     with torch.no_grad():
-        for _, (group_id, features, targets, z1, _) in enumerate(data_loader):
+        for _, (_, features, targets, bias, _) in enumerate(data_loader):
             features = features.to(device)
-            targets = targets.to(device)
+            targets_device = targets.to(device)
             
             # Collect logits from all models in the ensemble
             batch_logits_list = []
@@ -91,7 +93,8 @@ def evaluate_ensemble(models, data_loader, device, model_type='baseline'):
                 if model_type == 'baseline':
                     logits, _, _ = model(features)
                 else:  # margin
-                    logits, _, _, _, _ = model(features, None, s=config.scale)  # margin parameter may vary
+                    # In eval mode, NetworkMargin returns 3 values. The first is the logits (cosine).
+                    logits, _, _ = model(features, m=None, s=config.scale)
                 batch_logits_list.append(logits.unsqueeze(0))
             
             # Average logits across ensemble models
@@ -99,7 +102,10 @@ def evaluate_ensemble(models, data_loader, device, model_type='baseline'):
             
             all_logits.append(avg_logits.cpu())
             all_targets.extend(targets.cpu().numpy())
-            all_group_ids.extend(group_id.numpy())
+
+            # Correctly calculate group_id
+            group_ids = targets.numpy() * 2 + bias.numpy()
+            all_group_ids.extend(group_ids)
     
     all_logits = torch.cat(all_logits, dim=0)
     all_targets = np.array(all_targets)
@@ -143,15 +149,15 @@ def compare_models(args):
     # Define model configurations
     baseline_kwargs = {
         'model_name': config.model_name,
-        'num_class': config.num_class,
+        'num_classes': config.num_class,
         'mlp_neurons': config.mlp_neurons,
         'hid_dim': config.hid_dim
     }
     
     margin_kwargs = {
         'model_name': config.model_name,
-        'num_class': config.num_class,
-        'device': device,
+        'num_classes': config.num_class,
+        'DEVICE': device,
         'std': config.std,
         'mlp_neurons': config.mlp_neurons,
         'hid_dim': config.hid_dim
@@ -160,8 +166,8 @@ def compare_models(args):
     results = []
     
     # Load and evaluate baseline model
-    if os.path.exists(config.basemodel_path):
-        baseline_model = load_model(Network, config.basemodel_path, device, **baseline_kwargs)
+    if os.path.exists(config.baseline_path_erm):
+        baseline_model = load_model(Network, config.baseline_path_erm, device, **baseline_kwargs)
         global_acc, worst_acc, avg_acc, group_accs = evaluate_model(
             baseline_model, test_loader, device, model_type='baseline')
         results.append(['Baseline', global_acc, worst_acc, avg_acc])
@@ -181,8 +187,8 @@ def compare_models(args):
         results.append(['Baseline-SWA', global_acc, worst_acc, avg_acc])
     
     # Load and evaluate margin model
-    if os.path.exists(config.margin_path):
-        margin_model = load_model(NetworkMargin, config.margin_path, device, **margin_kwargs)
+    if os.path.exists(config.margin_path_erm):
+        margin_model = load_model(NetworkMargin, config.margin_path_erm, device, **margin_kwargs)
         global_acc, worst_acc, avg_acc, group_accs = evaluate_model(
             margin_model, test_loader, device, model_type='margin')
         results.append(['Margin', global_acc, worst_acc, avg_acc])
@@ -201,70 +207,66 @@ def compare_models(args):
             swa_margin_model, test_loader, device, model_type='margin')
         results.append(['Margin-SWA', global_acc, worst_acc, avg_acc])
     
-    # Try to load and evaluate ensemble models
-    # For EMA ensemble
-    ema_ensemble_paths = [f'ensemble_model/ema_baseline_epoch{i}.pt' for i in range(config.base_epochs)]
-    ema_ensemble_paths = [p for p in ema_ensemble_paths if os.path.exists(p)]
-    if ema_ensemble_paths:
-        ema_ensemble_models = []
-        for path in ema_ensemble_paths[:5]:  # Use top 5 models (or fewer if not available)
-            try:
-                model = load_model(Network, path, device, **baseline_kwargs)
-                ema_ensemble_models.append(model)
-            except:
-                continue
-        if ema_ensemble_models:
+    # Try to load and evaluate ensemble models using Top-K selection
+    topk = 5
+    metric = 'worst' # 'worst' or 'val'
+
+    # --- Helper function for Top-K evaluation ---
+    def evaluate_topk_ensemble(model_type, training_type, model_class, model_kwargs):
+        print(f"\nAttempting to evaluate Top-K ensemble for: {model_type}-{training_type}")
+        ensemble_paths = [f'ensemble_model/{training_type}_{model_type}_epoch{i}.pt' for i in range(config.base_epochs)]
+        val_accs_path = f'ensemble_model/{training_type}_{model_type}_val_accs.npy'
+        val_worsts_path = f'ensemble_model/{training_type}_{model_type}_val_worsts.npy'
+
+        if not (os.path.exists(val_accs_path) and os.path.exists(val_worsts_path)):
+            print(f"Validation score files not found. Skipping Top-K ensemble.")
+            return
+
+        val_accs = np.load(val_accs_path)
+        val_worsts = np.load(val_worsts_path)
+        
+        metric_arr = val_worsts if metric == 'worst' else val_accs
+        
+        # Ensure we don't have more epochs in metric_arr than in existing paths
+        num_epochs = min(len(metric_arr), len(ensemble_paths))
+        metric_arr = metric_arr[:num_epochs]
+        
+        # Get indices of top-k models
+        # Ensure topk is not larger than the number of available epochs
+        actual_topk = min(topk, len(metric_arr))
+        if actual_topk == 0:
+            print("No epochs to select from. Skipping.")
+            return
+            
+        topk_indices = np.argsort(metric_arr)[-actual_topk:]
+        
+        ensemble_models = []
+        for idx in topk_indices:
+            if idx < len(ensemble_paths):
+                path = ensemble_paths[idx]
+                if os.path.exists(path):
+                    try:
+                        model = load_model(model_class, path, device, **model_kwargs)
+                        ensemble_models.append(model)
+                    except Exception as e:
+                        print(f"Could not load model {path}: {e}")
+                        continue
+        
+        if ensemble_models:
+            print(f"Evaluating with {len(ensemble_models)} models based on Top-K '{metric}' metric.")
             global_acc, worst_acc, avg_acc, group_accs = evaluate_ensemble(
-                ema_ensemble_models, test_loader, device, model_type='baseline')
-            results.append(['Baseline-EMA-Ensemble', global_acc, worst_acc, avg_acc])
-    
-    # For SWA ensemble
-    swa_ensemble_paths = [f'ensemble_model/swa_baseline_epoch{i}.pt' for i in range(config.base_epochs)]
-    swa_ensemble_paths = [p for p in swa_ensemble_paths if os.path.exists(p)]
-    if swa_ensemble_paths:
-        swa_ensemble_models = []
-        for path in swa_ensemble_paths[:5]:  # Use top 5 models (or fewer if not available)
-            try:
-                model = load_model(Network, path, device, **baseline_kwargs)
-                swa_ensemble_models.append(model)
-            except:
-                continue
-        if swa_ensemble_models:
-            global_acc, worst_acc, avg_acc, group_accs = evaluate_ensemble(
-                swa_ensemble_models, test_loader, device, model_type='baseline')
-            results.append(['Baseline-SWA-Ensemble', global_acc, worst_acc, avg_acc])
-    
-    # For margin + EMA ensemble
-    ema_margin_ensemble_paths = [f'ensemble_model/ema_margin_epoch{i}.pt' for i in range(config.base_epochs)]
-    ema_margin_ensemble_paths = [p for p in ema_margin_ensemble_paths if os.path.exists(p)]
-    if ema_margin_ensemble_paths:
-        ema_margin_ensemble_models = []
-        for path in ema_margin_ensemble_paths[:5]:  # Use top 5 models (or fewer if not available)
-            try:
-                model = load_model(NetworkMargin, path, device, **margin_kwargs)
-                ema_margin_ensemble_models.append(model)
-            except:
-                continue
-        if ema_margin_ensemble_models:
-            global_acc, worst_acc, avg_acc, group_accs = evaluate_ensemble(
-                ema_margin_ensemble_models, test_loader, device, model_type='margin')
-            results.append(['Margin-EMA-Ensemble', global_acc, worst_acc, avg_acc])
-    
-    # For margin + SWA ensemble
-    swa_margin_ensemble_paths = [f'ensemble_model/swa_margin_epoch{i}.pt' for i in range(config.base_epochs)]
-    swa_margin_ensemble_paths = [p for p in swa_margin_ensemble_paths if os.path.exists(p)]
-    if swa_margin_ensemble_paths:
-        swa_margin_ensemble_models = []
-        for path in swa_margin_ensemble_paths[:5]:  # Use top 5 models (or fewer if not available)
-            try:
-                model = load_model(NetworkMargin, path, device, **margin_kwargs)
-                swa_margin_ensemble_models.append(model)
-            except:
-                continue
-        if swa_margin_ensemble_models:
-            global_acc, worst_acc, avg_acc, group_accs = evaluate_ensemble(
-                swa_margin_ensemble_models, test_loader, device, model_type='margin')
-            results.append(['Margin-SWA-Ensemble', global_acc, worst_acc, avg_acc])
+                ensemble_models, test_loader, device, model_type=model_type)
+            
+            model_name = f'{model_type.capitalize()}-{training_type.upper()}-Ensemble (Top-{len(ensemble_models)})'
+            results.append([model_name, global_acc, worst_acc, avg_acc])
+        else:
+            print("No models loaded for ensemble. Skipping.")
+
+    # --- Evaluate all ensemble combinations ---
+    evaluate_topk_ensemble('baseline', 'ema', Network, baseline_kwargs)
+    evaluate_topk_ensemble('baseline', 'swa', Network, baseline_kwargs)
+    evaluate_topk_ensemble('margin', 'ema', NetworkMargin, margin_kwargs)
+    evaluate_topk_ensemble('margin', 'swa', NetworkMargin, margin_kwargs)
     
     # Create a comparison table
     df = pd.DataFrame(results, columns=['Model', 'Global Acc', 'Worst Acc', 'Avg Acc'])

@@ -36,6 +36,8 @@ margin_path_swa = './swa/margin_swa.pth'
 # Path for the pre-trained baseline model used by all CAML variants
 # This MUST point to the standard ERM baseline for correct margin calculation
 basemodel_path_for_margin = './erm/baseline_erm.pth'
+basemodel_path = './erm/baseline_erm.pth'
+
 
 
 

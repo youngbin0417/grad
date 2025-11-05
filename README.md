@@ -24,7 +24,7 @@ This repository contains the implementation of Bias-Balanced Margin Learning wit
 - `margin_loss_continue.py`: Continual training from saved models
 - `balance_validation_sets.py`: Tools for dataset balancing
 - `predict.py`: Prediction utilities
-- `predict_grad.py`: Enhanced prediction with model comparison
+- `predict_grad.py`: Comprehensive comparison of single models and Top-K ensembles
 - `requirements.txt`: Required Python packages
 
 ## Usage
@@ -53,21 +53,30 @@ python margin_loss_ema_grad.py --type baseline --dataset celeba --train
 python margin_loss_swa_grad.py --type margin --dataset celeba --train --swa
 ```
 
-### Testing with Ensemble
+### Evaluating Models
+
+This project provides two main ways to evaluate models:
+
+**1. Comprehensive Comparison (Recommended)**
+
+Use `predict_grad.py` to get a full report comparing all trained single models (Baseline, EMA, SWA, Margin) and their corresponding Top-K ensembles. This is the easiest way to see all results at once.
+
 ```bash
-python margin_loss_ema_grad.py --type baseline --dataset celeba --test-only
+python predict_grad.py --dataset celeba --gpu 0
+```
+
+**2. Focused Ensemble Evaluation**
+
+To evaluate the Top-K ensemble from a *specific* training run immediately after it finishes, use the `--test-only` flag. This is useful for quick, focused checks.
+
+```bash
+# Example: Evaluate the SWA + Margin model just trained
 python margin_loss_swa_grad.py --type margin --dataset celeba --test-only
 ```
 
 ### Continual Training
 ```bash
 python margin_loss_continue.py --type baseline --dataset celeba --train
-```
-
-### Model Comparison
-```bash
-python predict_grad.py --dataset celeba --gpu 0
-python predict_grad.py --dataset waterbirds --gpu 0
 ```
 
 ### Evaluation Options
